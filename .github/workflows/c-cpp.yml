@@ -30,7 +30,6 @@ jobs:
           msystem: UCRT64
           install: >-
             make
-            zip
             mingw-w64-ucrt-x86_64-gcc
 
       - name: Build
@@ -42,25 +41,11 @@ jobs:
         run: |
           ls -l build/ACZModLoader.exe
           test -s build/ACZModLoader.exe
-
-      - name: Assemble package
-        shell: msys2 {0}
-        run: |
-          mkdir -p package
-          cp build/ACZModLoader.exe package/
-          cp README.md LICENSE CONTRIBUTING.md package/
-          cp -r mods package/
-          cp -r examples package/
-          cd package
-          zip -r ../ACZModLoader-windows-x64.zip .
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ACZModLoader-windows-x64
-          path: ACZModLoader-windows-x64.zip
-          if-no-files-found: error
-          retention-days: 30
+          objdump -p build/ACZModLoader.exe | grep 'DLL Name'
+          if objdump -p build/ACZModLoader.exe | grep -Eq 'DLL Name: (libwinpthread|libstdc\+\+|libgcc)'; then
+            echo "Unexpected MinGW runtime dependency in ACZModLoader.exe"
+            exit 1
+          fi
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
@@ -68,5 +53,5 @@ jobs:
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           target_commitish: ${{ github.sha }}
-          files: ACZModLoader-windows-x64.zip
+          files: build/ACZModLoader.exe
           generate_release_notes: true
